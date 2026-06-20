@@ -36,14 +36,14 @@ async function handleFile(file, type) {
             if (ext === '.fur') {
                 parsedDMF = await parseFUR(file);
                 document.getElementById('trackerStatus').innerHTML = 
-                    `✅ ${file.name} <span class="text-green-400">(Furnace .fur)</span>`;
-                log('✅ .fur file parsed successfully');
+                    `[OK] ${file.name} <span class="text-green-400">(Furnace .fur)</span>`;
+                log('[OK] .fur file parsed successfully');
             } 
             else if (ext === '.dmf') {
                 parsedDMF = await parseDMF(file);
                 document.getElementById('trackerStatus').innerHTML = 
-                    `✅ ${file.name} <span class="text-green-400">(DefleMask .dmf)</span>`;
-                log('✅ .dmf file parsed successfully');
+                    `[OK] ${file.name} <span class="text-green-400">(DefleMask .dmf)</span>`;
+                log('[OK] .dmf file parsed successfully');
             } 
             else {
                 throw new Error("Unsupported file type. Only .dmf and .fur are allowed.");
@@ -54,10 +54,10 @@ async function handleFile(file, type) {
             await convertWAVtoPCE(file);
         }
     } catch (e) {
-        log(`❌ ERROR: ${e.message}`);
+        log(`[ERR] ERROR: ${e.message}`);
         console.error(e);
         document.getElementById('trackerStatus').innerHTML = 
-            `<span class="text-red-400">❌ ${e.message}</span>`;
+            `<span class="text-red-400">[ERR] ${e.message}</span>`;
     }
 }
 
@@ -87,13 +87,22 @@ async function generateProject() {
     // 2. Pack debug state
     zip.file(`${songDir}/debug_state.json`, JSON.stringify(parsedDMF, null, 2));
 
-    // 3. Generate the C source 
+    // 3. Pack HuTrack bank collision guard
+    zip.file('Assets/Music/hutrack_bank_padding.inc', `; Keeps PCEAS proc relocation out of HuTrack SOUND_BANK.
+; 4096 bytes is enough to avoid the parser collision without changing ROM size late.
+hutrack_bank_padding_start:
+  .ds 4096
+hutrack_bank_padding_end:
+`);
+
+    // 4. Generate the C source 
     const mainC = `#include <stdio.h>
 #include "HuSFX/HuC_interface/HuVGM_defs.h"
 #include "huc.h"
 #include "HuTrack/Huc_interface/HuTrack.c"
 #include "HuSFX/Huc_interface/HucSFX.c"
 
+#incasmlabel(hutrack_bank_padding, "Assets/Music/hutrack_bank_padding.inc", 2);
 #incasmlabel(${finalName}, "${songDir}/${finalName}.song.inc", 2);
 
 char title_buf[48];
@@ -127,7 +136,7 @@ int main() {
 }`;
     zip.file('main.c', mainC);
 
-    // 4. Generate the Compile.bat file
+    // 5. Generate the Compile.bat file
     const compileBat = `@echo off
 set HUCC_HOME=C:\\PCEngine\\huc
 set HUTRACK_HOME=C:\\PCEngine\\HuTrack
@@ -145,7 +154,7 @@ pause
 `;
     zip.file('Compile.bat', compileBat);
 
-    // 5. HuCC config files (exact copies from working test project)
+    // 6. HuCC config files (exact copies from working test project)
     zip.file('hucc-final-extra.asm', `; ***************************************************************************
 ; ***************************************************************************
 ;
@@ -432,5 +441,5 @@ __sound_init\t.macro
     a.download = `${finalName}_HuTrack_Project.zip`;
     a.click();
 
-    log('✅ FULL PROJECT GENERATED!');
+    log('[OK] FULL PROJECT GENERATED!');
 }

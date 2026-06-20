@@ -11,7 +11,7 @@ JS_FILES = [
     "src/main.js"
 ]
 TEMPLATE_PATH = "src/template.html"
-OUTPUT_PATH = "hutrack_export.html"
+OUTPUT_PATH = os.path.join("release", "hutrack_export.html")
 PLACEHOLDER = "<!-- JS_INJECTION_POINT -->"
 
 def build():
@@ -31,6 +31,7 @@ def build():
         final_html = html_template.replace(PLACEHOLDER, full_js)
 
         # Write output
+        os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
         with open(OUTPUT_PATH, 'w', encoding='utf-8') as f:
             f.write(final_html)
 

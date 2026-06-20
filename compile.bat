@@ -5,7 +5,7 @@ python build.py
 
 if %ERRORLEVEL% EQU 0 (
     echo.
-    echo Done! Generated hutrack_export.html
+    echo Done! Generated release\hutrack_export.html
 ) else (
     echo.
     echo ERROR: Build failed. Ensure Python is installed and src/ files exist.

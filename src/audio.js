@@ -13,5 +13,5 @@ async function convertWAVtoPCE(file) {
         pcm[i] = v;
     }
     pcmData = pcm;
-    document.getElementById('pcmStatus').innerHTML = `✅ ${file.name}<br>${samples} bytes`;
+    document.getElementById('pcmStatus').innerHTML = `[OK] ${file.name}<br>${samples} bytes`;
 }

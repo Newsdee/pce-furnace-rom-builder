@@ -3,8 +3,8 @@
 // Instrument spec: https://github.com/tildearrow/furnace/blob/master/papers/newIns.md
 
 function warnUnsupportedVirtualTempo(numerator, denominator) {
-    if ((numerator === 0 && denominator === 0) || (numerator === 1 && denominator === 1)) return;
-    log(`Warning: Virtual tempo ${numerator}/${denominator} is not supported by DMF or HuTrack. Export will use tick1/tick2 timing only.`);
+    if ((numerator === 0 && denominator === 0) || (numerator === 1 && denominator === 1) || (numerator === 150 && denominator === 150)) return;
+    log(`<span style="color:#facc15">&#9888; Warning: Virtual tempo ${numerator}/${denominator} is not supported by DMF or HuTrack. Export will use tick1/tick2 timing only.</span>`);
 }
 
 async function parseFUR(file) {
