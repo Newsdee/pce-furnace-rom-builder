@@ -7,7 +7,7 @@ function warnUnsupportedVirtualTempo(numerator, denominator) {
     log(`<span style="color:#facc15">&#9888; Warning: Virtual tempo ${numerator}/${denominator} is not supported by DMF or HuTrack. Export will use tick1/tick2 timing only.</span>`);
 }
 
-async function parseFUR(file) {
+async function parseFUR(file, options = {}) {
     let buffer = await file.arrayBuffer();
     let data = new Uint8Array(buffer);
 
@@ -487,17 +487,7 @@ async function parseFUR(file) {
         }
         s.sampleData = rawData;
 
-        // Convert to PCE 8-bit unsigned (same as DMF parser)
-        if (depth === 16) {
-            s.samplePCE = rawData.map(v => {
-                let signed = v > 0x7FFF ? v - 0x10000 : v;
-                return (signed + 32767) >> 11;
-            });
-        } else if (depth === 8) {
-            s.samplePCE = rawData.map(v => v >> 3);
-        } else {
-            s.samplePCE = [];
-        }
+        s.samplePCE = convertSampleToHuTrackPCE(s, options);
         samples.push(s);
     }
 

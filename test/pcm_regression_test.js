@@ -82,5 +82,18 @@ function fail(message) {
     if (pcmDataDw !== '7434') fail(`expected pcmData size .dw 7434, got ${pcmDataDw}`);
     if (!files['fun_fact_one_pattern.pcmData.inc'].includes('.db $80')) fail('expected PCM terminator .db $80');
 
+    const furInput = path.join(__dirname, '..', 'examples', 'fun_fact', 'FunFact_sample_short_new.fur');
+    sandbox.__furFile = makeFakeFile(furInput);
+    const parsedFur = await vm.runInContext('parseFUR(__furFile)', sandbox);
+    sandbox.__furFileLinear = makeFakeFile(furInput);
+    const parsedFurLinear = await vm.runInContext('parseFUR(__furFileLinear, { highQualityPcmResample: false })', sandbox);
+
+    if (!parsedFur.samples || parsedFur.samples.length !== 1) fail(`expected one FUR sample, got ${parsedFur.samples ? parsedFur.samples.length : 0}`);
+    if (parsedFur.samples[0].sampleSize !== 11776) fail(`expected FUR source sample size 11776, got ${parsedFur.samples[0].sampleSize}`);
+    if (parsedFur.samples[0].sampleRate !== 11025) fail(`expected FUR sample C-4 rate 11025, got ${parsedFur.samples[0].sampleRate}`);
+    if (parsedFur.samples[0].samplePCE.length !== 7434) fail(`expected FUR PCE sample length 7434, got ${parsedFur.samples[0].samplePCE.length}`);
+    if (parsedFurLinear.samples[0].samplePCE.length !== 7434) fail(`expected FUR linear PCE sample length 7434, got ${parsedFurLinear.samples[0].samplePCE.length}`);
+    if (parsedFur.samples[0].samplePCE.join(',') === parsedFurLinear.samples[0].samplePCE.join(',')) fail('expected FUR compatible PCM output to differ from Trashy PCM fallback');
+
     console.log('PASS: PCM compatibility regression');
 })();

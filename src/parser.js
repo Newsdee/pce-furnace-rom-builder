@@ -92,7 +92,10 @@ function convertSampleToHuTrackPCE(sample, options = {}) {
     }
 
     const boosted = signedData.map(v => clamp16(v * 1.5));
-    const sourceRate = (HUTRACK_RATE_VAL[sample.sampleRate] || HUTRACK_RATE_VAL[0]) * (HUTRACK_PITCH_VAL[sample.samplePitch] || 1);
+    const sampleRate = sample.sampleRate || 0;
+    const sourceBaseRate = sampleRate > 1000 ? sampleRate : (HUTRACK_RATE_VAL[sampleRate] || HUTRACK_RATE_VAL[0]);
+    const pitchFactor = sampleRate > 1000 ? 1 : (HUTRACK_PITCH_VAL[sample.samplePitch] || 1);
+    const sourceRate = sourceBaseRate * pitchFactor;
     const resampler = highQualityPcmResample ? resampleKaiser : resampleLinear;
     const resampled = resampler(boosted, sourceRate, playbackRate).map(v => clamp16(v));
     return resampled.map(v => (v + 32767) >> 11);

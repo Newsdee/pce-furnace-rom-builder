@@ -45,7 +45,7 @@ async function handleFile(file, type) {
             const ext = file.name.toLowerCase().slice(-4);
 
             if (ext === '.fur') {
-                parsedDMF = await parseFUR(file);
+                parsedDMF = await parseFUR(file, getParseOptions());
                 document.getElementById('trackerStatus').innerHTML = 
                     `[OK] ${file.name} <span class="text-green-400">(Furnace .fur)</span>`;
                 log('[OK] .fur file parsed successfully');
