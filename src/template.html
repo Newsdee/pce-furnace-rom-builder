@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>HuTrack Online v1.1 - PROJECT GENERATOR</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
+    <style>
+        .dropzone { border: 3px dashed #666; transition: all 0.2s; }
+        .dropzone.dragover { border-color: #22c55e; background: #052e16; }
+    </style>
+</head>
+<body class="bg-zinc-950 text-white p-8">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-4xl font-bold text-green-400 mb-2">HuTrack Converter v1.1</h1>
+        <p class="text-zinc-400 mb-8">Full Project Generator: .dmf/.fur → HuTrack Assembly</p>
+
+        <div class="mb-10">
+            <h2 class="text-xl mb-3">1. Drop .dmf</h2>
+            <div id="trackerDrop" class="dropzone p-12 rounded-xl text-center cursor-pointer">Drop .dmf or .fur here</div>
+            <input type="file" id="trackerInput" class="hidden" accept=".dmf">
+            <div id="trackerStatus" class="mt-4 text-green-400 font-mono text-sm"></div>
+        </div>
+
+        <!--div class="mb-10">
+            <h2 class="text-xl mb-3">2. PCM Sample (WAV - optional)</h2>
+            <div id="pcmDrop" class="dropzone p-12 rounded-xl text-center cursor-pointer">Drop WAV here</div>
+            <input type="file" id="pcmInput" class="hidden" accept=".wav">
+            <div id="pcmStatus" class="mt-4 text-green-400 font-mono text-sm"></div>
+        </div-->
+
+        <!--div class="mb-10">
+            <h2 class="text-xl mb-3">3. Project Settings</h2>
+            <div class="flex flex-col gap-2">
+                <label class="text-zinc-400 text-sm">Song Name (used for filenames):</label>
+                <input type="text" id="songNameInput" class="bg-zinc-800 border border-zinc-700 p-3 rounded-xl text-white focus:outline-none focus:border-green-500" placeholder="Leave empty to use DMF name...">
+            </div>
+        </div-->
+
+        <button onclick="generateProject()" class="bg-green-500 hover:bg-green-600 px-8 py-4 rounded-xl text-xl font-bold w-full">
+            2. GENERATE HuCC PROJECT ZIP
+        </button>
+
+        <div id="log" class="mt-8 text-xs font-mono text-zinc-400 bg-black p-4 rounded overflow-auto max-h-96"></div>
+    </div>
+
+<script>
+<!-- JS_INJECTION_POINT -->
+</script>
+</body>
+</html>
