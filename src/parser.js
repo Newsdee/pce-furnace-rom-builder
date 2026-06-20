@@ -1,4 +1,46 @@
 // ============== THE PARSER ==============
+const HUTRACK_RATE_VAL = [1, 8000, 11025, 16000, 22050, 32000];
+const HUTRACK_PITCH_VAL = [1 / 6, 1 / 5, 1 / 4, 1 / 3, 1 / 2, 1, 2, 3, 4, 5];
+const HUTRACK_DEFAULT_PCM_PLAYBACK = 6960;
+
+function clamp16(sample) {
+    if (sample < -32767) return -32767;
+    if (sample > 32767) return 32767;
+    return sample;
+}
+
+function resampleLinear(samples, sourceRate, targetRate) {
+    if (!samples || samples.length === 0 || !sourceRate || !targetRate || sourceRate === targetRate) return samples ? samples.slice() : [];
+    const outputLen = Math.max(1, Math.round(samples.length * targetRate / sourceRate));
+    const output = [];
+    const ratio = sourceRate / targetRate;
+    for (let i = 0; i < outputLen; i++) {
+        const pos = i * ratio;
+        const idx = Math.floor(pos);
+        const frac = pos - idx;
+        const a = samples[Math.min(idx, samples.length - 1)];
+        const b = samples[Math.min(idx + 1, samples.length - 1)];
+        output.push(Math.trunc(a + ((b - a) * frac)));
+    }
+    return output;
+}
+
+function convertSampleToHuTrackPCE(sample, playbackRate = HUTRACK_DEFAULT_PCM_PLAYBACK) {
+    let signedData;
+    if (sample.sampleDepth === 16) {
+        signedData = sample.sampleData.map(v => v > 0x7fff ? v - 0x10000 : v);
+    } else if (sample.sampleDepth === 8) {
+        signedData = sample.sampleData.map(v => (v - 128) * 256);
+    } else {
+        return [];
+    }
+
+    const boosted = signedData.map(v => clamp16(v * 1.5));
+    const sourceRate = (HUTRACK_RATE_VAL[sample.sampleRate] || HUTRACK_RATE_VAL[0]) * (HUTRACK_PITCH_VAL[sample.samplePitch] || 1);
+    const resampled = resampleLinear(boosted, sourceRate, playbackRate).map(v => clamp16(v));
+    return resampled.map(v => (v + 32767) >> 11);
+}
+
 async function parseDMF(file) {
     let buffer = await file.arrayBuffer();
     let data = new Uint8Array(buffer);
@@ -234,11 +276,7 @@ async function parseDMF(file) {
         for (let d = 0; d < s.sampleSize; d++) rawData.push(reader.getNextWord());
         s.sampleData = rawData;
         
-        // Convert 16-bit signed to PCE 8-bit unsigned
-        s.samplePCE = rawData.map(v => {
-            let signed = v > 0x7FFF ? v - 0x10000 : v;
-            return (signed + 32767) >> 11;
-        });
+        s.samplePCE = convertSampleToHuTrackPCE(s);
         container.samples.push(s);
     }
 

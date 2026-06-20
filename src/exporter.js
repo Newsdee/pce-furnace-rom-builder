@@ -22,6 +22,17 @@ class HuTrackExporter {
         return `  .db ${arr.map(v => this.hex(v)).join(', ')}\n`;
     }
 
+    // Chunked 4-per-line .db (hex)
+    fmtDB_ChunkedHex(arr) {
+        if (!arr || arr.length === 0) return "";
+        let out = "";
+        for (let i = 0; i < arr.length; i += 4) {
+            let chunk = arr.slice(i, i + 4);
+            out += `  .db ${chunk.map(v => this.hex(v)).join(', ')}\n`;
+        }
+        return out;
+    }
+
     // Chunked 4-per-line .db (decimal)
     fmtDB_Chunked(arr) {
         if (!arr || arr.length === 0) return "";
@@ -198,7 +209,7 @@ class HuTrackExporter {
         // =====================================================================
         let sMatrix = `\n\n${sepLong}\n.samples.table\n\n`;
         sMatrix += `  ; offset to sample bank table.\n`;
-        sMatrix += `  .dw $0\n\n`;
+        sMatrix += `  .dw $${(this.c.samplesLen * 2).toString(16)}\n\n`;
         if (this.c.samplesLen === 0) {
             sMatrix += `${sepShorter}\n\n`;
             sMatrix += `${sepShorter}\n\n\n`;
@@ -219,7 +230,7 @@ class HuTrackExporter {
                 const s = this.c.samples[i];
                 if (i > 0) sData += `  .bank (bank(.sample${i-1}.end))\n  .org $4000 + (* & $1fff)\n`;
                 sData += `\n${sepLong}.sample${i}\n  .dw ${s.samplePCE.length}\n`;
-                sData += this.fmtDB_Verbose(s.samplePCE);
+                sData += this.fmtDB_ChunkedHex(s.samplePCE);
                 sData += `\n  .db $80\n.sample${i}.end\n\n`;
             }
         }
