@@ -2,6 +2,11 @@
 // Spec: https://github.com/tildearrow/furnace/blob/master/papers/format.md
 // Instrument spec: https://github.com/tildearrow/furnace/blob/master/papers/newIns.md
 
+function warnUnsupportedVirtualTempo(numerator, denominator) {
+    if ((numerator === 0 && denominator === 0) || (numerator === 1 && denominator === 1)) return;
+    log(`Warning: Virtual tempo ${numerator}/${denominator} is not supported by DMF or HuTrack. Export will use tick1/tick2 timing only.`);
+}
+
 async function parseFUR(file) {
     let buffer = await file.arrayBuffer();
     let data = new Uint8Array(buffer);
@@ -43,7 +48,7 @@ async function parseFUR(file) {
 
     log(`Blocks found: ${Object.keys(blocks).join(', ')}`);
 
-    // ===================== Song Info & Subsong — version-dependent =====================
+    // ===================== Song Info & Subsong - version-dependent =====================
     let songName, author, totalChans, tickTime1, tickTime2, timeBase, frameMode;
     let rowsPerPattern, ordersLen, patternMatrix, effectColumnsPerChannel;
     let instrumentCount = 0, wavetableCount = 0, sampleCount = 0;
@@ -97,7 +102,9 @@ async function parseFUR(file) {
         rowsPerPattern = reader.getNextWord();
         ordersLen      = reader.getNextWord();
         reader.skip(2); // highlights
-        reader.skip(4); // virtual tempo
+        const virtualTempoNumerator = reader.getNextWord();
+        const virtualTempoDenominator = reader.getNextWord();
+        warnUnsupportedVirtualTempo(virtualTempoNumerator, virtualTempoDenominator);
 
         const speedPatLen = reader.getNextByte();
         const speedPattern = [];
@@ -105,7 +112,7 @@ async function parseFUR(file) {
 
         reader.readSTR(); reader.readSTR(); // subsong name/comment
 
-        // Order table — ORDER-MAJOR for SNG2
+        // Order table - ORDER-MAJOR for SNG2
         patternMatrix = [];
         for (let ch = 0; ch < totalChans; ch++) patternMatrix.push([]);
         for (let ord = 0; ord < ordersLen; ord++) {
@@ -122,7 +129,7 @@ async function parseFUR(file) {
         tickTime2 = (speedPatLen >= 2 ? speedPattern[1] : speedPattern[0]) * timeBase;
         frameMode = (ticksPerSec >= 55) ? 1 : 0;
 
-        if (speedPatLen > 2) log(`Warning: Speed pattern has ${speedPatLen} entries — only first 2 used.`);
+        if (speedPatLen > 2) log(`Warning: Speed pattern has ${speedPatLen} entries - only first 2 used.`);
 
     } else if (blocks["INFO"]) {
         // =================== OLD FORMAT (<240): INFO block ===================
@@ -141,7 +148,7 @@ async function parseFUR(file) {
         sampleCount     = reader.getNextWord();
         const patternCount = reader.getNextDword();
 
-        // Chip IDs (32 bytes) — find PC Engine
+        // Chip IDs (32 bytes) - find PC Engine
         const chipIDs = [];
         for (let i = 0; i < 32; i++) chipIDs.push(reader.getNextByte());
         let chipCount = 0;
@@ -158,14 +165,14 @@ async function parseFUR(file) {
         reader.skip(32); // chip volumes (reserved)
         reader.skip(32); // chip panning (reserved)
 
-        // Chip flag pointers (128 bytes for >=119, 32×4=128 bytes for older)
+        // Chip flag pointers (128 bytes for >=119, 32x4=128 bytes for older)
         reader.skip(128);
 
         songName = reader.readSTR();
         author   = reader.readSTR();
         reader.getNextFloat(); // A-4 tuning
 
-        // Compat flags — count depends on version (each 1 byte)
+        // Compat flags - count depends on version (each 1 byte)
         // >=36: 3 flags (limit slides, linear pitch, loop modality)
         if (formatVersion >= 36) reader.skip(3);
         // >=42: 2 flags (proper noise, wave duty)
@@ -195,7 +202,7 @@ async function parseFUR(file) {
         reader.skip(sampleCount * 4);
         reader.skip(patternCount * 4);
 
-        // Orders — CHANNEL-MAJOR for old INFO: for each channel, read ordLen bytes
+        // Orders - CHANNEL-MAJOR for old INFO: for each channel, read ordLen bytes
         patternMatrix = [];
         for (let ch = 0; ch < totalChans; ch++) {
             const chOrder = [];
@@ -206,7 +213,7 @@ async function parseFUR(file) {
         effectColumnsPerChannel = [];
         for (let ch = 0; ch < totalChans; ch++) effectColumnsPerChannel.push(reader.getNextByte());
 
-        // Skip: hide (ch), collapse (ch), names (ch×STR), short names (ch×STR)
+        // Skip: hide (ch), collapse (ch), names (chxSTR), short names (chxSTR)
         reader.skip(totalChans); // hide
         reader.skip(totalChans); // collapse
         for (let ch = 0; ch < totalChans; ch++) reader.readSTR(); // names
@@ -243,7 +250,11 @@ async function parseFUR(file) {
         if (formatVersion >= 130) reader.skip(1); // old arpeggio strategy
 
         // Virtual tempo (>=96)
-        if (formatVersion >= 96) reader.skip(4);
+        if (formatVersion >= 96) {
+            const virtualTempoNumerator = reader.getNextWord();
+            const virtualTempoDenominator = reader.getNextWord();
+            warnUnsupportedVirtualTempo(virtualTempoNumerator, virtualTempoDenominator);
+        }
 
         // Additional subsongs (>=95)
         if (formatVersion >= 95) {
@@ -282,7 +293,7 @@ async function parseFUR(file) {
         if (formatVersion >= 191) reader.skip(1); // legacy always set vol
         if (formatVersion >= 200) reader.skip(1); // legacy sample offset
 
-        // Speed pattern (>=139) — overrides speed1/speed2
+        // Speed pattern (>=139) - overrides speed1/speed2
         let speedPatLen = 0;
         const speedPattern = [];
         if (formatVersion >= 139) {
@@ -301,14 +312,14 @@ async function parseFUR(file) {
         }
         frameMode = (ticksPerSec >= 55) ? 1 : 0;
 
-        if (speedPatLen > 2) log(`Warning: Speed pattern has ${speedPatLen} entries — only first 2 used.`);
+        if (speedPatLen > 2) log(`Warning: Speed pattern has ${speedPatLen} entries - only first 2 used.`);
     } else {
         throw new Error("No INFO or INF2 block found");
     }
 
-    log(`"${songName}" by "${author}" — ${totalChans}ch, tick1=${tickTime1}, tick2=${tickTime2}, timeBase=${timeBase}, frameMode=${frameMode}, rows=${rowsPerPattern}, orders=${ordersLen}`);
+    log(`"${songName}" by "${author}" - ${totalChans}ch, tick1=${tickTime1}, tick2=${tickTime2}, timeBase=${timeBase}, frameMode=${frameMode}, rows=${rowsPerPattern}, orders=${ordersLen}`);
 
-    // ===================== INS2 — Instruments =====================
+    // ===================== INS2 - Instruments =====================
     const ins2Blocks = blocks["INS2"] || [];
     const instrumentsLen = ins2Blocks.length;
     const instrumentData = [];
@@ -329,7 +340,7 @@ async function parseFUR(file) {
         inst.noiseEnvLength = 0; inst.noiseEnv = []; inst.noiseEnvLoopPosition = 0xff;
         inst.wavetableEnvLength = 0; inst.wavetableEnv = []; inst.wavetableEnvLoopPosition = 0xff;
 
-        if (insType !== 5) log(`⚠️ Instrument ${i} type=${insType} (not PC Engine=5)`);
+        if (insType !== 5) log(`Warning: Instrument ${i} type=${insType} (not PC Engine=5)`);
 
         // Feature loop
         while (reader.index + 4 <= insEnd) {
@@ -363,7 +374,7 @@ async function parseFUR(file) {
                     const wordSize = (macroOTW >> 6) & 3;
                     const macroType = (macroOTW >> 1) & 3; // 0=seq, 1=ADSR, 2=LFO
 
-                    if (macroType !== 0) log(`⚠️ Instrument ${i} macro ${macroCode}: ADSR/LFO mode not supported, treating as sequence`);
+                    if (macroType !== 0) log(`Warning: Instrument ${i} macro ${macroCode}: ADSR/LFO mode not supported, treating as sequence`);
 
                     // Read macro data based on word size
                     const macroData = [];
@@ -397,7 +408,7 @@ async function parseFUR(file) {
                     } else if (macroCode === 1) { // Arpeggio
                         inst.arpeggioEnvLength = clippedLen;
                         // Fixed/absolute mode: for 32-bit data, bit 30 is Furnace's fixed flag.
-                        // For 8/16-bit data, bit 30 doesn't exist — use macroMode header byte.
+                        // For 8/16-bit data, bit 30 doesn't exist - use macroMode header byte.
                         const isFixed = wordSize === 3
                             ? macroData.some(v => (v & 0x40000000) !== 0)
                             : macroMode === 1;
@@ -427,7 +438,7 @@ async function parseFUR(file) {
         instrumentData.push(inst);
     }
 
-    // ===================== WAVE — Wavetables =====================
+    // ===================== WAVE - Wavetables =====================
     const waveBlocks = blocks["WAVE"] || [];
     const wavetableLen = waveBlocks.length;
     const wavetableData = [];
@@ -443,7 +454,7 @@ async function parseFUR(file) {
         wavetableData.push(table);
     }
 
-    // ===================== SMP2 — Samples =====================
+    // ===================== SMP2 - Samples =====================
     const smp2Blocks = blocks["SMP2"] || [];
     const samplesLen = smp2Blocks.length;
     const samples = [];
@@ -471,7 +482,7 @@ async function parseFUR(file) {
         } else if (depth === 8) {
             for (let d = 0; d < s.sampleSize; d++) rawData.push(reader.getNextByte());
         } else {
-            log(`⚠️ Sample ${i} depth=${depth} not supported, skipping data`);
+            log(`Warning: Sample ${i} depth=${depth} not supported, skipping data`);
             reader.skip(s.sampleSize);
         }
         s.sampleData = rawData;
@@ -510,7 +521,7 @@ async function parseFUR(file) {
     container.uncompPatternData = [];
     container.PatternMatrixCompressed = [];
 
-    // ===================== PATN — Patterns =====================
+    // ===================== PATN - Patterns =====================
     // Index PATN blocks by (subsong, channel, patternID) for fast lookup
     const patnBlocks = blocks["PATN"] || [];
     const patnIndex = {};
@@ -635,7 +646,7 @@ async function parseFUR(file) {
                         const semitone = furNote % 12;
                         const octave   = Math.floor(furNote / 12); // 0-based from octave -5
                         // DMF note: 1=C#(in DMF), but actually DMF maps 1=C#,2=D...12=B,13=C(next oct)
-                        // Wait — DMF note mapping (from parser.js):
+                        // Wait - DMF note mapping (from parser.js):
                         //   raw 0 = empty, raw 1=C#, 2=D, ...12=B
                         //   Then processedNote = raw+1 for raw 1..12, and if ==13 -> 1 with octaveDelta
                         // So to produce correct DMF-style: semitone 0=C -> raw note 12 (C of "current" octave in DMF is 12)
@@ -706,7 +717,7 @@ async function parseFUR(file) {
                         // Furnace internal octave = floor(note/12). Display octave = internal - 5.
                         // DMF files store C with raw_octave = display-1, and the DMF parser adds
                         // octaveDelta to compensate. Furnace already stores C at the correct
-                        // internal octave, so we must NOT add octaveDelta here — processedNote
+                        // internal octave, so we must NOT add octaveDelta here - processedNote
                         // wrapping handles the C encoding, the octave is already right.
                         dmfOctave = octave - 5;
                     } else if (furNote === 180) {
