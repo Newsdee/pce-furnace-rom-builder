@@ -16,10 +16,16 @@ let pcmData = null;
 let parsedDMF = null;        // Note: still called parsedDMF for compatibility with exporter
 let currentDMFName = "";     // Store filename without extension
 
+function getParseOptions() {
+    const hqPcmResample = document.getElementById('hqPcmResample');
+    return { highQualityPcmResample: !hqPcmResample || hqPcmResample.checked };
+}
+
 // ============== DRAG & DROP LOGIC ==============
 function setupDrop(id, inputId, type) {
     const zone = document.getElementById(id);
     const input = document.getElementById(inputId);
+    if (!zone || !input) return;
     zone.onclick = () => input.click();
     input.onchange = e => handleFile(e.target.files[0], type);
     zone.ondragover = e => { e.preventDefault(); zone.classList.add('dragover'); };
@@ -45,7 +51,7 @@ async function handleFile(file, type) {
                 log('[OK] .fur file parsed successfully');
             } 
             else if (ext === '.dmf') {
-                parsedDMF = await parseDMF(file);
+                parsedDMF = await parseDMF(file, getParseOptions());
                 document.getElementById('trackerStatus').innerHTML = 
                     `[OK] ${file.name} <span class="text-green-400">(DefleMask .dmf)</span>`;
                 log('[OK] .dmf file parsed successfully');
@@ -68,6 +74,10 @@ async function handleFile(file, type) {
 
 setupDrop('trackerDrop', 'trackerInput', 'tracker');
 setupDrop('pcmDrop', 'pcmInput', 'pcm');
+
+document.getElementById('hqPcmResample').onchange = () => {
+    if (trackerFile) handleFile(trackerFile, 'tracker');
+};
 
 async function generateProject() {
     if (!parsedDMF) { 

@@ -19,7 +19,7 @@
         <div class="mb-10">
             <h2 class="text-xl mb-3">1. Drop .dmf</h2>
             <div id="trackerDrop" class="dropzone p-12 rounded-xl text-center cursor-pointer">Drop .dmf or .fur here</div>
-            <input type="file" id="trackerInput" class="hidden" accept=".dmf">
+            <input type="file" id="trackerInput" class="hidden" accept=".dmf,.fur">
             <div id="trackerStatus" class="mt-4 text-green-400 font-mono text-sm"></div>
         </div>
 
@@ -37,6 +37,13 @@
                 <input type="text" id="songNameInput" class="bg-zinc-800 border border-zinc-700 p-3 rounded-xl text-white focus:outline-none focus:border-green-500" placeholder="Leave empty to use DMF name...">
             </div>
         </div-->
+
+        <div class="mb-6 bg-zinc-900 border border-zinc-800 rounded p-4">
+            <label class="flex items-center gap-3 text-sm text-zinc-200 cursor-pointer">
+                <input type="checkbox" id="hqPcmResample" class="h-4 w-4 accent-green-500" checked>
+                High-quality PCM resampling
+            </label>
+        </div>
 
         <button onclick="generateProject()" class="bg-green-500 hover:bg-green-600 px-8 py-4 rounded-xl text-xl font-bold w-full">
             2. GENERATE HuCC PROJECT ZIP

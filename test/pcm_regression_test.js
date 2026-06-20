@@ -62,10 +62,14 @@ function fail(message) {
     const input = path.join(__dirname, '..', 'examples', 'fun_fact', 'fun_fact_one_pattern.dmf');
     sandbox.__file = makeFakeFile(input);
     const parsed = await vm.runInContext('parseDMF(__file)', sandbox);
+    sandbox.__fileLinear = makeFakeFile(input);
+    const parsedLinear = await vm.runInContext('parseDMF(__fileLinear, { highQualityPcmResample: false })', sandbox);
 
     if (!parsed.samples || parsed.samples.length !== 1) fail(`expected one sample, got ${parsed.samples ? parsed.samples.length : 0}`);
     if (parsed.samples[0].sampleSize !== 11776) fail(`expected source sample size 11776, got ${parsed.samples[0].sampleSize}`);
     if (parsed.samples[0].samplePCE.length !== 7434) fail(`expected PCE sample length 7434, got ${parsed.samples[0].samplePCE.length}`);
+    if (parsedLinear.samples[0].samplePCE.length !== 7434) fail(`expected linear PCE sample length 7434, got ${parsedLinear.samples[0].samplePCE.length}`);
+    if (parsed.samples[0].samplePCE.join(',') === parsedLinear.samples[0].samplePCE.join(',')) fail('expected high-quality PCM output to differ from linear fallback');
 
     sandbox.__parsed = parsed;
     sandbox.__exporter = vm.runInContext('new HuTrackExporter(__parsed, { includePath: "Assets/Music/fun_fact_one_pattern/" })', sandbox);

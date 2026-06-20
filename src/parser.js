@@ -25,7 +25,63 @@ function resampleLinear(samples, sourceRate, targetRate) {
     return output;
 }
 
-function convertSampleToHuTrackPCE(sample, playbackRate = HUTRACK_DEFAULT_PCM_PLAYBACK) {
+function besselI0(x) {
+    let sum = 1;
+    let term = 1;
+    const half = x * 0.5;
+    for (let k = 1; k <= 24; k++) {
+        term *= (half / k) * (half / k);
+        sum += term;
+        if (term < 1e-12 * sum) break;
+    }
+    return sum;
+}
+
+function sinc(x) {
+    if (Math.abs(x) < 1e-8) return 1;
+    const pix = Math.PI * x;
+    return Math.sin(pix) / pix;
+}
+
+function kaiserWindow(x, radius, beta) {
+    const ratio = x / radius;
+    if (ratio < -1 || ratio > 1) return 0;
+    return besselI0(beta * Math.sqrt(1 - ratio * ratio)) / besselI0(beta);
+}
+
+function resampleKaiser(samples, sourceRate, targetRate) {
+    if (!samples || samples.length === 0 || !sourceRate || !targetRate || sourceRate === targetRate) return samples ? samples.slice() : [];
+    const outputLen = Math.max(1, Math.round(samples.length * targetRate / sourceRate));
+    const output = [];
+    const ratio = sourceRate / targetRate;
+    const cutoff = Math.min(1, targetRate / sourceRate);
+    const radius = 16;
+    const beta = 12.9846;
+
+    for (let i = 0; i < outputLen; i++) {
+        const center = i * ratio;
+        const left = Math.ceil(center - radius);
+        const right = Math.floor(center + radius);
+        let acc = 0;
+        let weightSum = 0;
+
+        for (let j = left; j <= right; j++) {
+            if (j < 0 || j >= samples.length) continue;
+            const distance = center - j;
+            const weight = cutoff * sinc(distance * cutoff) * kaiserWindow(distance, radius, beta);
+            acc += samples[j] * weight;
+            weightSum += weight;
+        }
+
+        output.push(Math.trunc(weightSum ? acc / weightSum : 0));
+    }
+
+    return output;
+}
+
+function convertSampleToHuTrackPCE(sample, options = {}) {
+    const playbackRate = options.playbackRate || HUTRACK_DEFAULT_PCM_PLAYBACK;
+    const highQualityPcmResample = options.highQualityPcmResample !== false;
     let signedData;
     if (sample.sampleDepth === 16) {
         signedData = sample.sampleData.map(v => v > 0x7fff ? v - 0x10000 : v);
@@ -37,11 +93,12 @@ function convertSampleToHuTrackPCE(sample, playbackRate = HUTRACK_DEFAULT_PCM_PL
 
     const boosted = signedData.map(v => clamp16(v * 1.5));
     const sourceRate = (HUTRACK_RATE_VAL[sample.sampleRate] || HUTRACK_RATE_VAL[0]) * (HUTRACK_PITCH_VAL[sample.samplePitch] || 1);
-    const resampled = resampleLinear(boosted, sourceRate, playbackRate).map(v => clamp16(v));
+    const resampler = highQualityPcmResample ? resampleKaiser : resampleLinear;
+    const resampled = resampler(boosted, sourceRate, playbackRate).map(v => clamp16(v));
     return resampled.map(v => (v + 32767) >> 11);
 }
 
-async function parseDMF(file) {
+async function parseDMF(file, options = {}) {
     let buffer = await file.arrayBuffer();
     let data = new Uint8Array(buffer);
     
@@ -276,7 +333,7 @@ async function parseDMF(file) {
         for (let d = 0; d < s.sampleSize; d++) rawData.push(reader.getNextWord());
         s.sampleData = rawData;
         
-        s.samplePCE = convertSampleToHuTrackPCE(s);
+        s.samplePCE = convertSampleToHuTrackPCE(s, options);
         container.samples.push(s);
     }
 
