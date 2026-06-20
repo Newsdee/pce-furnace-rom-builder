@@ -1,7 +1,12 @@
 // ============== MAIN UI & GLUE ==============
 function log(msg) {
     const el = document.getElementById('log');
-    el.innerHTML += `> ${msg}<br>`;
+    if (typeof msg === 'string' && msg.indexOf('[OK]') === 0) {
+        el.innerHTML += `<span class="text-green-400">> ${msg}</span><br>`;
+    }
+    else {
+        el.innerHTML += `> ${msg}<br>`;
+    }
     el.scrollTop = el.scrollHeight;
 }
 
